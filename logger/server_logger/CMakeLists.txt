@@ -9,8 +9,11 @@ add_library(
 target_include_directories(
         mp_os_lggr_srvr_lggr
         PUBLIC
-        ./include)
+        ./include
+)
 
+
+target_link_libraries(mp_os_lggr_srvr_lggr PUBLIC httplib::httplib)
 target_link_libraries(
         mp_os_lggr_srvr_lggr
         PUBLIC
