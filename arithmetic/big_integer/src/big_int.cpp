@@ -10,6 +10,65 @@
 #include <cmath>
 #include <algorithm>
 
+big_int &big_int::optimize() &
+{
+    auto this_iter = _digits.begin();
+    auto dig_iter = this_iter;
+
+    while (this_iter < _digits.end()) {
+
+        for (; dig_iter - this_iter < 8; ++dig_iter) {
+            if (*dig_iter != 0) {
+                dig_iter = this_iter;
+                break;
+            }
+        }
+        if (this_iter == dig_iter) break;
+        this_iter = dig_iter;
+    }
+
+    if (_digits.empty()) _sign = true;
+    _digits.erase(_digits.begin(), this_iter);
+    return *this;
+}
+
+big_int &big_int::increase_module() &
+{
+    auto this_iter = --_digits.end();
+
+    while (*this_iter == (unsigned int)(-1) && this_iter >= _digits.begin()) {
+        *this_iter = 0;
+        --this_iter;
+    }
+
+    if (this_iter >= _digits.begin()) {
+        ++(*this_iter);
+
+    } else {
+        _digits.emplace(_digits.begin(), 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u);
+    }
+
+    optimize();
+    return *this;
+}
+
+big_int &big_int::decrease_module() &
+{
+    if (_digits.empty()) return *this;
+
+    auto this_iter = --_digits.end();
+
+    while (*this_iter == 0u && this_iter >= _digits.begin()) {
+        *this_iter = (unsigned int)(-1);
+        --this_iter;
+    }
+
+    --(*this_iter);
+
+    optimize();
+    return *this;
+}
+
 std::strong_ordering big_int::operator<=>(const big_int &other) const noexcept
 {
     throw not_implemented("std::strong_ordering big_int::operator<=>(const big_int &) const noexcept", "your code should be here...");
@@ -17,29 +76,37 @@ std::strong_ordering big_int::operator<=>(const big_int &other) const noexcept
 
 big_int::operator bool() const noexcept
 {
-    throw not_implemented("big_int::operator bool()", "your code should be here...");
+    return _digits.empty();
 }
 
 big_int &big_int::operator++() &
 {
-    throw not_implemented("big_int &big_int::operator++()", "your code should be here...");
+    if (_sign) return increase_module();
+    return decrease_module();
 }
-
 
 big_int big_int::operator++(int)
 {
-    throw not_implemented("big_int big_int::operator++(int)", "your code should be here...");
+    auto old = big_int(*this);
+    ++(*this);
+    return old;
 }
 
 big_int &big_int::operator--() &
 {
-    throw not_implemented("big_int &big_int::operator--()", "your code should be here...");
-}
+    if (_digits.empty()) {
+        _sign = false;
+        return increase_module();
 
+    } else if (_sign) return decrease_module();
+    return increase_module();
+}
 
 big_int big_int::operator--(int)
 {
-    throw not_implemented("big_int big_int::operator--(int)", "your code should be here...");
+    auto old = big_int(*this);
+    --(*this);
+    return old;
 }
 
 big_int &big_int::operator+=(const big_int &other) &
@@ -174,17 +241,30 @@ std::istream &operator>>(std::istream &stream, big_int &value)
 
 bool big_int::operator==(const big_int &other) const noexcept
 {
-    throw not_implemented("bool big_int::operator==(const big_int &) const noexcept", "your code should be here...");
+    if (_digits.size() != other._digits.size()) return false;
+
+    auto th = _digits.begin();
+    auto oth = other._digits.begin();
+
+    while (th < _digits.end()) {
+        if (*th != *oth) return false;
+        ++th;
+        ++oth;
+    }
+
+    return true;
 }
 
 big_int::big_int(const std::vector<unsigned int, pp_allocator<unsigned int>> &digits, bool sign)
 {
-    throw not_implemented("big_int::big_int(const std::vector<unsigned int, pp_allocator<unsigned int>> &digits, bool sign)", "your code should be here...");
+    _digits = std::vector<unsigned int, pp_allocator<unsigned int>>(digits);
+    _sign = sign;
 }
 
 big_int::big_int(std::vector<unsigned int, pp_allocator<unsigned int>> &&digits, bool sign) noexcept
 {
-    throw not_implemented("big_int::big_int(std::vector<unsigned int, pp_allocator<unsigned int>> &&digits, bool sign) noexcept", "your code should be here...");
+    _digits = std::vector<unsigned int, pp_allocator<unsigned int>>(digits);
+    _sign = sign;
 }
 
 big_int::big_int(const std::string &num, unsigned int radix, pp_allocator<unsigned int>)
@@ -194,7 +274,8 @@ big_int::big_int(const std::string &num, unsigned int radix, pp_allocator<unsign
 
 big_int::big_int(pp_allocator<unsigned int>)
 {
-    throw not_implemented("big_int::big_int(pp_allocator<unsigned int>)", "your code should be here...");
+    _digits = std::vector<unsigned int, pp_allocator<unsigned int>>();
+    _sign = true;
 }
 
 big_int &big_int::multiply_assign(const big_int &other, big_int::multiplication_rule rule) &

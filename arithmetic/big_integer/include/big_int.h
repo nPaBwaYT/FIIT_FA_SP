@@ -93,6 +93,10 @@ public:
 
     big_int(pp_allocator<unsigned int> = pp_allocator<unsigned int>());
 
+    big_int& optimize() &;
+    big_int& increase_module() &;
+    big_int& decrease_module() &;
+
     explicit operator bool() const noexcept; //false if 0 , else true
 
     big_int& operator++() &;

@@ -61,13 +61,14 @@ std::string client_logger::make_format(const std::string &message, severity sev)
 {
     try {
         std::string result;
-        std::time_t now = std::time(nullptr);
+        const auto now = std::chrono::system_clock::now();
+        auto in_time = std::chrono::system_clock::to_time_t(now);
 
         std::tm* tm = nullptr;
         std::tm tm_buf{};
 
 #ifdef _WIN32
-        gmtime_s(&tm_buf, &now);
+        gmtime_s(&tm_buf, &in_time);
         tm = &tm_buf;
 #else
         tm = std::gmtime(&now);
