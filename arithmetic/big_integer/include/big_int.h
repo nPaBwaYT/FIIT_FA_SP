@@ -94,8 +94,8 @@ public:
     big_int(pp_allocator<unsigned int> = pp_allocator<unsigned int>());
 
     big_int& optimize() &;
-    big_int& increase_module() &;
-    big_int& decrease_module() &;
+    big_int& increase_module(unsigned int diff, size_t shift) &;
+    big_int& decrease_module(unsigned int diff, size_t shift) &;
 
     explicit operator bool() const noexcept; //false if 0 , else true
 
@@ -123,14 +123,17 @@ public:
     big_int& operator*=(const big_int& other) &;
 
     big_int& multiply_assign(const big_int& other, multiplication_rule rule = multiplication_rule::trivial) &;
+    big_int& trivial_multiply(const big_int &other) &;
 
     big_int& operator/=(const big_int& other) &;
 
     big_int& divide_assign(const big_int& other, division_rule rule = division_rule::trivial) &;
+    big_int& trivial_division(const big_int &other) &;
 
     big_int& operator%=(const big_int& other) &;
 
     big_int& modulo_assign(const big_int& other, division_rule rule = division_rule::trivial) &;
+    big_int& trivial_modulo(const big_int &other) &;
 
     big_int operator+(const big_int& other) const;
     big_int operator-(const big_int& other) const;
@@ -138,9 +141,21 @@ public:
     big_int operator/(const big_int& other) const;
     big_int operator%(const big_int& other) const;
 
+    big_int operator -() const
+    {
+        big_int _new(*this);
+        _new._sign = !_sign;
+        return _new;
+    }
+
     std::strong_ordering operator<=>(const big_int& other) const noexcept;
 
     bool operator==(const big_int& other) const noexcept;
+    bool operator<(const big_int& other) const noexcept;
+    bool operator<=(const big_int& other) const noexcept;
+    bool operator>(const big_int& other) const noexcept;
+    bool operator>=(const big_int& other) const noexcept;
+
 
     big_int& operator<<=(size_t shift) &;
 
@@ -168,20 +183,45 @@ public:
     friend std::istream &operator>>(std::istream &stream, big_int &value);
 
     std::string to_string() const;
+
+    big_int &karatsuba(const big_int &other) &;
 };
 
 template<class alloc>
 big_int::big_int(const std::vector<unsigned int, alloc> &digits, bool sign, pp_allocator<unsigned int> allocator)
+        : _sign(sign), _digits(digits.begin(), digits.end(), allocator)
 {
-    throw not_implemented("template<class alloc> big_int::big_int(const std::vector<unsigned int, alloc> &digits, bool sign, pp_allocator<unsigned int> allocator)", "your code should be here...");
+    while (!_digits.empty() && _digits.back() == 0)
+    {
+        _digits.pop_back();
+    }
 }
 
+// Реализация шаблонного конструктора из числа
 template<std::integral Num>
-big_int::big_int(Num d, pp_allocator<unsigned int>)
+big_int::big_int(Num d, pp_allocator<unsigned int> allocator)
+        : _sign(d >= 0), _digits(allocator)
 {
-    throw not_implemented("template<std::integral Num>big_int::big_int(Num, pp_allocator<unsigned int>)", "your code should be here...");
+    auto abs_d = static_cast<unsigned long long>(d < 0 ? -d : d);
+    _digits.clear();
+    if (abs_d !=0)
+    {
+        constexpr unsigned long long BASE = 1ULL << (std::numeric_limits<unsigned int>::digits);
+        while (abs_d > 0)
+        {
+            _digits.push_back(static_cast<unsigned int>(abs_d % BASE));
+            abs_d /= BASE;
+        }
+    }
+    while (!_digits.empty() && _digits.back() == 0)
+    {
+        _digits.pop_back();
+    }
 }
 
 big_int operator""_bi(unsigned long long n);
+big_int gcd(const big_int &a, const big_int &b);
 
 #endif //MP_OS_BIG_INT_H
+
+

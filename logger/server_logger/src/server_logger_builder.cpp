@@ -47,11 +47,11 @@ logger_builder& server_logger_builder::add_file_stream(
         }
 
 
-        {
-            if (std::ofstream test_file(stream_file_path, std::ios::app); !test_file.is_open()) {
-                throw std::runtime_error("Cannot open file: " + stream_file_path);
-            }
+
+        if (std::ofstream test_file(stream_file_path, std::ios::app); !test_file.is_open()) {
+            throw std::runtime_error("Cannot open file: " + stream_file_path);
         }
+
 
         if (const auto it = _output_streams.find(severity); it != _output_streams.end()) {
             it->second.first = stream_file_path;
