@@ -6,26 +6,19 @@
 
 void fraction::optimise()
 {
+    if (_denominator < 0_bi) {
+        _numerator = -_numerator;
+        _numerator.optimize();
+        _denominator = -_denominator;
+    }
+
     big_int _gcd = gcd(_numerator, _denominator);
     if (_gcd > 1_bi) {
         _numerator /= _gcd;
         _denominator /= _gcd;
     }
-    if (_denominator < 0) {
-        _numerator = -_numerator;
-        _denominator = -_denominator;
-    }
 }
 
-template<std::convertible_to<big_int> f, std::convertible_to<big_int> s>
-fraction::fraction(f &&numerator, s &&denominator)
-        : _numerator(std::forward<f>(numerator)),
-          _denominator(std::forward<s>(denominator)) {
-    if (!_denominator) {
-        throw std::invalid_argument("Denominator cannot be zero");
-    }
-    optimise();
-}
 
 fraction::fraction(const pp_allocator<big_int::value_type> allocator)
         : _numerator(0, allocator), _denominator(1, allocator) {
@@ -134,40 +127,49 @@ std::string fraction::to_string() const {
     return ss.str();
 }
 
-fraction fraction::sin(fraction const &epsilon) const {
+fraction fraction::sin(fraction const &epsilon) const
+{
     fraction x = *this;
-    fraction result(0, 1);
+    fraction x_squared = x * x;
+    fraction result = x;
     fraction term = x;
-    big_int factorial = 1;
-    int n = 1;
-    while (term > epsilon || term < -epsilon) {
-        result += term;
-        n += 2;
-        factorial *= n * (n - 1);
-        term *= x * x;
-        term /= fraction(factorial, 1);
-        term = -term;
+    big_int divisor = 1;
+    fraction numerator = x;
+
+    for (int n = 1; ; ++n) {
+        divisor *= (2*n) * (2*n + 1);
+        numerator *= x_squared;
+        term = numerator / fraction(divisor, 1);
+
+        if (term.abs() <= epsilon) break;
+
+        result += (n % 2 == 1) ? -term : term;
     }
+
     return result;
 }
 
-fraction fraction::cos(fraction const &epsilon) const {
+fraction fraction::cos(fraction const &epsilon) const
+{
     fraction x = *this;
+    fraction x_squared = x * x;
     fraction result(1, 1);
     fraction term(1, 1);
-    big_int factorial = 1;
-    int n = 0;
-    while (term > epsilon || term < -epsilon) {
-        if (n > 0) {
-            result += term;
-        }
-        n += 2;
-        factorial *= n * (n - 1);
-        term *= x * x;
-        term /= fraction(factorial, 1);
-        term = -term;
+    big_int divisor = 1;
+    fraction num(1, 1);
+
+    for (int n = 1; ; ++n) {
+        divisor *= (2*n - 1) * (2*n);
+        num *= x_squared;
+        term = num / fraction(divisor, 1);
+
+        if (term.abs() <= epsilon) break;
+
+        result += (n % 2 == 1) ? -term : term;
     }
+
     return result;
+
 }
 
 fraction fraction::tg(fraction const &epsilon) const {
@@ -203,20 +205,36 @@ fraction fraction::cosec(fraction const &epsilon) const {
 }
 
 fraction fraction::arctg(fraction const &epsilon) const {
-    if (_numerator < 0) {
-        return -(-*this).arctg(epsilon);
+    if (this->abs() > fraction(1, 1)) {
+
+        if (*this > fraction(0, 1)) {
+            return fraction(2,1) * calculate_half_pi(epsilon/fraction(2,1)) / fraction(2, 1) - (fraction(1, 1) / *this).arctg(epsilon);
+        } else {
+            return -fraction(2,1) * calculate_half_pi(epsilon/fraction(2,1)) / fraction(2, 1) - (fraction(1, 1) / *this).arctg(epsilon);
+        }
     }
-    if (*this > fraction(1, 1)) {
-        return fraction(1, 2) - (fraction(1, 1) / *this).arctg(epsilon);
+
+    fraction x = *this;
+    fraction x_power = x;
+    fraction result = x;
+    int sign = -1;
+
+    for (int n = 1; ; ++n) {
+        x_power *= x * x;
+        fraction term = x_power / fraction(2 * n + 1, 1);
+        if (sign > 0) {
+            result += term;
+        } else {
+            result -= term;
+        }
+
+        if (term.abs() <= epsilon) {
+            break;
+        }
+
+        sign *= -1;
     }
-    fraction result(0, 1);
-    fraction term = *this;
-    int n = 1;
-    while (term > epsilon || term < -epsilon) {
-        result += fraction((n % 2 == 0 ? -1 : 1), n) * term;
-        n += 2;
-        term *= *this * *this;
-    }
+
     return result;
 }
 
@@ -264,7 +282,8 @@ fraction fraction::root(size_t degree, fraction const &epsilon) const {
     return guess;
 }
 
-fraction fraction::log2(fraction const &epsilon) const {
+fraction fraction::log2(fraction const &epsilon) const
+{
     if (_numerator <= 0 || _denominator <= 0) {
         throw std::domain_error("Logarithm of non-positive number is undefined");
     }
@@ -272,33 +291,204 @@ fraction fraction::log2(fraction const &epsilon) const {
     return this->ln(epsilon) / ln2;
 }
 
-fraction fraction::ln(fraction const &epsilon) const {
+fraction fraction::ln_normalized(fraction const &x, fraction const &epsilon)
+{
+
+    if (x == fraction(1, 1)) {
+        return fraction(0, 1);
+    }
+
+
+
+    fraction one(1, 1);
+    fraction y = (x - one) / (x + one);
+    fraction y_power = y;
+    fraction result = y;
+    fraction term = y;
+
+    for (int n = 3; ; n += 2) {
+        y_power *= y * y;
+        term = y_power / fraction(n, 1);
+        result += term;
+
+        if (term.abs() <= epsilon) {
+            break;
+        }
+    }
+
+    return result * fraction(2, 1);
+}
+
+fraction fraction::ln(fraction const& epsilon) const {
     if (_numerator <= 0 || _denominator <= 0) {
         throw std::domain_error("Natural logarithm of non-positive number is undefined");
     }
+
     fraction x = *this;
-    if (x > fraction(2, 1)) {
-        return fraction(1, 1).ln(epsilon) + (x / fraction(2, 1)).ln(epsilon);
-    }
-    if (x < fraction(1, 2)) {
-        return -(fraction(1, 1) / x).ln(epsilon);
-    }
-    fraction y = x - fraction(1, 1);
     fraction result(0, 1);
-    fraction term = y;
-    int n = 1;
-    while (term > epsilon || term < -epsilon) {
-        result += fraction((n % 2 == 0 ? -1 : 1), n) * term;
-        n++;
-        term *= y;
+    fraction two(2, 1);
+    fraction one(1, 1);
+
+    int k = 0;
+
+
+    while (x >= two) {
+        x /= two;
+        ++k;
     }
-    return result;
+
+    while (x < fraction(1, 2)) {
+        x *= two;
+        --k;
+    }
+
+
+    return ln_normalized(x, epsilon) + fraction(k, 1) * ln_normalized(two, epsilon);
 }
 
-fraction fraction::lg(fraction const &epsilon) const {
+fraction fraction::lg(fraction const &epsilon) const
+{
     if (_numerator <= 0 || _denominator <= 0) {
         throw std::domain_error("Base-10 logarithm of non-positive number is undefined");
     }
     fraction ln10 = fraction(10, 1).ln(epsilon);
     return this->ln(epsilon) / ln10;
+}
+
+
+fraction fraction::arcsin(fraction const &epsilon) const {
+    if (*this < fraction(-1, 1) || *this > fraction(1, 1)) {
+        throw std::domain_error("arcsin is only defined for values in [-1, 1]");
+    }
+
+    if (*this == fraction(1, 1)) return calculate_half_pi(epsilon);
+    if (*this == fraction(-1, 1)) return -calculate_half_pi(epsilon);
+    if (*this == fraction(0, 1)) return fraction(0, 1);
+
+    fraction x = *this;
+    fraction x_power = x;
+    fraction result = x;
+    fraction term = x;
+
+    big_int n = 1;
+    big_int factorial_2n = 1;
+    big_int factorial_n = 1;
+    big_int four_pow_n = 1;
+
+    for (int i = 1; ; ++i) {
+
+        factorial_2n *= big_int(2 * i - 1);
+        factorial_2n *= big_int(2 * i);
+        factorial_n *= big_int(i);
+        four_pow_n *= big_int(4);
+
+        x_power *= x * x;
+
+
+        big_int numerator = factorial_2n * x_power._numerator;
+
+        big_int denominator = four_pow_n * factorial_n * factorial_n * big_int(2 * i + 1) * x_power._denominator;
+
+        term = fraction(numerator, denominator);
+
+        result += term;
+
+        if (term.abs() <= epsilon) {
+            break;
+        }
+    }
+
+    return result;
+}
+
+fraction fraction::arccos(fraction const &epsilon) const {
+
+    fraction abs_val = this->abs();
+    if (abs_val > fraction(1, 1)) {
+        throw std::domain_error("arccos определен только для значений в диапазоне [-1, 1]");
+    }
+
+
+    if (*this == fraction(1, 1)) return fraction(0, 1);
+    if (*this == fraction(-1, 1)) return fraction(2,1) * calculate_half_pi(epsilon);
+    if (*this == fraction(0, 1)) return calculate_half_pi(epsilon);
+
+
+    fraction arcsin_val = this->arcsin(epsilon);
+
+    return calculate_half_pi(epsilon) - arcsin_val;
+
+}
+
+fraction fraction::arcctg(fraction const &epsilon) const {
+
+    fraction arctg_val = this->arctg(epsilon);
+
+    return calculate_half_pi(epsilon) - arctg_val;
+}
+
+fraction fraction::arcsec(fraction const &epsilon) const {
+
+    fraction abs_val = this->abs();
+    if (abs_val < fraction(1, 1)) {
+        throw std::domain_error("arcsec defined |x| >= 1");
+    }
+
+
+    fraction reciprocal = fraction(1, 1) / *this;
+    return reciprocal.arccos(epsilon);
+}
+
+fraction fraction::arccosec(fraction const &epsilon) const {
+
+    fraction abs_val = this->abs();
+    if (abs_val < fraction(1, 1)) {
+        throw std::domain_error("arccosec defined |x| >= 1");
+    }
+
+
+    fraction reciprocal = fraction(1, 1) / *this;
+    return reciprocal.arcsin(epsilon);
+}
+
+fraction fraction::abs() const {
+    big_int abs_numerator = _numerator >= 0_bi ? _numerator : -_numerator;
+    big_int abs_denominator = _denominator >= 0_bi ? _denominator : -_denominator;
+    fraction abs_frac(abs_numerator, abs_denominator);
+    return abs_frac;
+}
+
+fraction fraction::calculate_half_pi(const fraction &epsilon) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    long double pi_2 = M_PI_2;
+    big_int tmp = epsilon._denominator;
+
+    fraction PI_2(1,epsilon._denominator * 10_bi);
+    while (tmp) {
+        pi_2 *= 10;
+        while (pi_2 > 10.0) {
+            pi_2 -= 10;
+        }
+        PI_2._numerator *= 10_bi;
+        PI_2._numerator += big_int(static_cast<unsigned long long>(pi_2));
+        tmp /= 10_bi;
+    }
+    return PI_2;
 }

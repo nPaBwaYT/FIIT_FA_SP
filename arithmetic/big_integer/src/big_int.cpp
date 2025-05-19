@@ -113,26 +113,27 @@ big_int& big_int::plus_assign(const big_int& other, size_t shift) &
         }
 
     } else {
-        big_int tmp(other);
-        for (size_t i = 0; i < shift; ++i) {
-            tmp._digits.emplace(tmp._digits.begin(), 0u);
-        }
-        tmp._sign = !tmp._sign;
+        big_int abs_other(other);
+        abs_other._sign = true;
+        big_int abs_this(*this);
+        abs_this._sign = true;
 
-        auto comp = *this <=> tmp;
+        for (size_t i = 0; i < shift; ++i) {
+            abs_other._digits.emplace(abs_other._digits.begin(), 0u);
+        }
+
+        auto comp = abs_this <=> abs_other;
 
         if (comp == std::strong_ordering::less) {
             for (size_t offset = 0; offset < _digits.size(); ++offset) {
-                tmp.decrease_module(_digits[offset], offset);
+                abs_other.decrease_module(_digits[offset], offset);
             }
-            for (size_t offset = 0; offset < other._digits.size(); ++offset) {
-                increase_module(tmp._digits[offset], offset);
-            }
+            _digits = std::move(abs_other._digits);
             _sign = !_sign;
 
         } else if (comp == std::strong_ordering::greater) {
             for (size_t offset = 0; offset < other._digits.size(); ++offset) {
-                decrease_module(tmp._digits[offset], offset);
+                decrease_module(abs_other._digits[offset], offset);
             }
 
         } else {
@@ -151,23 +152,27 @@ big_int &big_int::minus_assign(const big_int &other, size_t shift) &
         }
 
     } else {
-        big_int tmp(other);
+        big_int abs_other(other);
+        abs_other._sign = true;
+        big_int abs_this(*this);
+        abs_this._sign = true;
+
         for (size_t i = 0; i < shift; ++i) {
-            tmp._digits.emplace(tmp._digits.begin(), 0u);
+            abs_other._digits.emplace(abs_other._digits.begin(), 0u);
         }
 
-        auto comp = *this <=> tmp;
+        auto comp = abs_this <=> abs_other;
 
         if (comp == std::strong_ordering::less) {
             for (size_t offset = 0; offset < _digits.size(); ++offset) {
-                tmp.decrease_module(_digits[offset], offset);
+                abs_other.decrease_module(_digits[offset], offset);
             }
-            _digits = std::move(tmp._digits);
+            _digits = std::move(abs_other._digits);
             _sign = !_sign;
 
         } else if (comp == std::strong_ordering::greater) {
             for (size_t offset = 0; offset < other._digits.size(); ++offset) {
-                decrease_module(tmp._digits[offset], offset);
+                decrease_module(abs_other._digits[offset], offset);
             }
 
         } else {
@@ -259,6 +264,10 @@ std::strong_ordering big_int::operator<=>(const big_int& other) const noexcept
         } else {
             return other._digits.size() <=> _digits.size();
         }
+    }
+
+    if (_digits.size() == 0) {
+        return std::strong_ordering::equal;
     }
 
     auto th = --_digits.end();
@@ -798,10 +807,10 @@ big_int operator""_bi(unsigned long long n)
 
 big_int gcd(const big_int &a, const big_int &b)
 {
-    if (b == 0_bi) {
-        return a;
+    if (!b) {
+        return a > 0_bi ? a : -a;
     } else {
-        big_int c = a % b;
+        big_int c = ((a % b) + b) % b;
         return gcd(b, c);
     }
 }
