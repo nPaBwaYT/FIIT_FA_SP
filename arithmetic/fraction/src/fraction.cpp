@@ -420,6 +420,8 @@ fraction fraction::arccos(fraction const &epsilon) const {
 
 }
 
+//ЕБЛАН
+
 fraction fraction::arcctg(fraction const &epsilon) const {
 
     fraction arctg_val = this->arctg(epsilon);
@@ -459,23 +461,6 @@ fraction fraction::abs() const {
 }
 
 fraction fraction::calculate_half_pi(const fraction &epsilon) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     long double pi_2 = M_PI_2;
     big_int tmp = epsilon._denominator;

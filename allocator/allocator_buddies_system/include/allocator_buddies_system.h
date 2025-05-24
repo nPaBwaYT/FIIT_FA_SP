@@ -32,11 +32,11 @@ namespace __detail
 }
 
 class allocator_buddies_system final:
-    public smart_mem_resource,
-    public allocator_test_utils,
-    public allocator_with_fit_mode,
-    private logger_guardant,
-    private typename_holder
+        public smart_mem_resource,
+        public allocator_test_utils,
+        public allocator_with_fit_mode,
+        private logger_guardant,
+        private typename_holder
 {
 
 private:
@@ -71,45 +71,64 @@ public:
             allocator_with_fit_mode::fit_mode allocate_fit_mode = allocator_with_fit_mode::fit_mode::first_fit);
 
     allocator_buddies_system(
-        allocator_buddies_system const &other);
-    
+            allocator_buddies_system const &other) = delete;
+
     allocator_buddies_system &operator=(
-        allocator_buddies_system const &other);
-    
+            allocator_buddies_system const &other) = delete;
+
     allocator_buddies_system(
-        allocator_buddies_system &&other) noexcept;
-    
+            allocator_buddies_system &&other) noexcept;
+
     allocator_buddies_system &operator=(
-        allocator_buddies_system &&other) noexcept;
+            allocator_buddies_system &&other) noexcept;
 
     ~allocator_buddies_system() override;
 
 public:
-    
+
     [[nodiscard]] void *do_allocate_sm(
-        size_t size) override;
-    
+            size_t size) override;
+
     void do_deallocate_sm(
-        void *at) override;
+            void *at) override;
 
     bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override;
 
     inline void set_fit_mode(
-        allocator_with_fit_mode::fit_mode mode) override;
+            allocator_with_fit_mode::fit_mode mode) override;
 
 
     std::vector<allocator_test_utils::block_info> get_blocks_info() const noexcept override;
 
 private:
 
-    
+    inline size_t get_block_size(void* block) const noexcept;
+
+    void* get_first(size_t size) noexcept;
+
+    void* get_best(size_t size) noexcept;
+
+    void* get_worst(size_t size) noexcept;
+
     inline logger *get_logger() const override;
-    
+
     inline std::string get_typename() const override;
 
-    std::vector<allocator_test_utils::block_info> get_blocks_info_inner() const override;
+    inline void* get_buddy(void* cur_block);
 
+    std::vector<allocator_test_utils::block_info> get_blocks_info_inner() const override;
     /** TODO: Highly recommended for helper functions to return references */
+    static size_t power_of_two(size_t size);
+
+    static allocator_dbg_helper* get_parent(void* trusted_memory);
+
+
+    static size_t get_general_size(void* trusted_memory);
+
+    static std::mutex& get_mutex(void* trusted_memory);
+
+    static fit_mode get_fit_mode(void* trusted_memory);
+
 
     class buddy_iterator
     {
@@ -147,7 +166,7 @@ private:
     buddy_iterator begin() const noexcept;
 
     buddy_iterator end() const noexcept;
-    
+
 };
 
 #endif //MATH_PRACTICE_AND_OPERATING_SYSTEMS_ALLOCATOR_ALLOCATOR_BUDDIES_SYSTEM_H

@@ -2,7 +2,7 @@
 #include <binary_search_tree.h>
 #include <logger_builder.h>
 #include <client_logger_builder.h>
-#include <allocator_sorted_list.h>
+#include <allocator_buddies_system.h>
 #include <iostream>
 
 logger *create_logger(
@@ -148,7 +148,7 @@ TEST(binarySearchTreePositiveTests, noIteratorTest)
                                            }));
     logger->trace("binarySearchTreePositiveTests.test1 started");
 
-    auto al = std::make_unique<allocator_sorted_list>(10000);
+    auto al = std::make_unique<allocator_buddies_system>(10000);
 
     auto bst = std::make_unique<binary_search_tree<int, std::string>>(std::less<int>(), al.get(), logger.get());
 //    auto bst = new binary_search_tree<int, std::string>(key_comparer(), al.get(), logger.get());

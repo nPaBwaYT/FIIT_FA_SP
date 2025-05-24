@@ -20,6 +20,7 @@ void* test_mem_resource::do_allocate_sm(size_t n)
 return ::operator new(n);
 }
 
+
 void test_mem_resource::do_deallocate_sm(void* p)
 {
 ::operator delete(p);

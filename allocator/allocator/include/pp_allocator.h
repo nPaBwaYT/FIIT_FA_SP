@@ -21,7 +21,6 @@ private:
 };
 
 
-
 struct test_mem_resource : public smart_mem_resource
 {
 private:
