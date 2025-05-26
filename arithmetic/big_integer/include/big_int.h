@@ -141,12 +141,7 @@ public:
     big_int operator/(const big_int& other) const;
     big_int operator%(const big_int& other) const;
 
-    big_int operator -() const
-    {
-        big_int _new(*this);
-        _new._sign = !_sign;
-        return _new;
-    }
+    big_int operator -() const;
 
     std::strong_ordering operator<=>(const big_int& other) const noexcept;
 

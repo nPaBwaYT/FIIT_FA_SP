@@ -111,7 +111,6 @@ private:
     std::vector<allocator_test_utils::block_info> get_blocks_info_inner() const override;
 
 
-
     inline logger *get_logger() const override;
 
     inline std::string get_typename() const noexcept override;

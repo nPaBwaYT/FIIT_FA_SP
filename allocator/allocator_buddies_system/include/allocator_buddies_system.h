@@ -120,6 +120,8 @@ private:
     /** TODO: Highly recommended for helper functions to return references */
     static size_t power_of_two(size_t size);
 
+    static size_t log_2(size_t size);
+
     static allocator_dbg_helper* get_parent(void* trusted_memory);
 
 

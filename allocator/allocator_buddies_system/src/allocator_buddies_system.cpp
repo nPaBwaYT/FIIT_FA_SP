@@ -36,7 +36,9 @@ allocator_buddies_system::allocator_buddies_system(
         logger *logger,
         allocator_with_fit_mode::fit_mode allocate_fit_mode)
 {
-    if (power_of_two(space_size) <= allocator_metadata_size)  throw std::logic_error("space_size too small");
+    size_t p = allocator_metadata_size;
+    size_t l = power_of_two(space_size);
+    if (space_size <= log_2(allocator_metadata_size))  throw std::logic_error("space_size too small");
 
     std::pmr::memory_resource* alloc = parent_allocator ? parent_allocator: std::pmr::get_default_resource();
 
@@ -305,7 +307,18 @@ void *allocator_buddies_system::get_buddy(void *cur_block) {
 
 size_t allocator_buddies_system::power_of_two(size_t size)
 {
-    return 1 << size;
+    size_t res = 1 << size;
+    return res;
+}
+
+size_t allocator_buddies_system::log_2(size_t size)
+{
+    size_t res = 0;
+    size_t tmp = size;
+    while (tmp >>= 1) {
+        ++res;
+    }
+    return res;
 }
 
 inline logger* allocator_buddies_system::get_logger() const

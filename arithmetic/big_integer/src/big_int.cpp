@@ -572,6 +572,13 @@ big_int &big_int::operator/=(const big_int &other) &
     return divide_assign(other);
 }
 
+big_int big_int::operator -() const
+{
+    big_int _new(*this);
+    _new._sign = !_sign;
+    return _new;
+}
+
 std::string big_int::to_string() const
 {
     if(_digits.empty())
